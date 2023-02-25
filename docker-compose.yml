@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  web:
+    build: ./broker-manager
+    command: python main.py
+    volumes:
+      - ./broker-manager:/usr/src/app/
+    ports:
+      - 5000:5000
+    env_file:
+      - ./.env.dev
+    depends_on:
+      - db
+  db:
+    image: postgres:13-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment: 
+      - POSTGRES_PASSWORD=admin
+
+volumes:
+  postgres_data:

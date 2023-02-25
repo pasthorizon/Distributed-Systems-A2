@@ -443,7 +443,7 @@ if __name__ == "__main__":
     DB_NAME = 'dist_queue_2'
 
     conn = psycopg2.connect(
-            host="localhost",
+            host="db",
             user="postgres",
             password="admin",
         )
@@ -460,7 +460,7 @@ if __name__ == "__main__":
         conn.close()
 
         conn = psycopg2.connect(
-            host="localhost",
+            host="db",
             user="postgres",
             password="admin",
             dbname = DB_NAME
@@ -504,7 +504,7 @@ if __name__ == "__main__":
 
 
     conn = psycopg2.connect(
-            host="localhost",
+            host="db",
             user="postgres",
             password="admin",
             dbname = DB_NAME
@@ -518,4 +518,4 @@ if __name__ == "__main__":
     print(all_tables)
 
 
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')
