@@ -6,6 +6,9 @@ import json
 import psycopg2
 from psycopg2 import sql
 import time
+import sys
+import random
+import requests
 
 app = Flask(__name__)
 
@@ -71,9 +74,11 @@ def GoodResponse(response: dict = {}):
     return resp
 
 
-def CheckValidityOfID(id: int, topic: str, client: str):
-    ind = 3  if client == "producer" else 2
-    cursor = conn.cursor()
+def ReturnTopic(topic: str):
+    """
+        Checks if a topic is present in the database
+        Returns (True/False, HTTP Response, Topic Details)
+    """
     sem.acquire()
     try: 
         cursor.execute("""SELECT * FROM all_topics WHERE topicname = %s""",(topic,))
@@ -83,28 +88,48 @@ def CheckValidityOfID(id: int, topic: str, client: str):
     except:
         sem.release()
         cursor.close()
-        return ServerErrorResponse('error in accessing server'), None
-      
+        return False, ServerErrorResponse('error in accessing server'), []
+    
     if len(result) == 0:
-        return BadRequestResponse('topic not present in database'), None
+        return False, ServerErrorResponse('topic not present in database'), []
+    
+    return True, GoodResponse({'status':'success'}), result
+
+
+def CheckValidityOfID(id: int, topic: str, client: str):
+    """
+        Checks if an ID is valid
+    """
+    ind = 3  if client == "producer" else 2
+
+    flag, response, result = ReturnTopic(topic)
+    if flag == False:
+        return response, None
 
     table_id = id // (10 * MAX_TOPICS)
     table_topic = (id // 10) % (MAX_TOPICS)
     flag = id % 2
     correct_flag = 1 if client == "producer" else 0
-    if table_topic != result[0][0] or table_id >= result[0][ind]: 
+    if table_topic != result[0][0] or table_id >= result[0][ind] or flag != correct_flag: 
         return BadRequestResponse(f'topic not subscribed by {client}'), None
     else:
         return None, result
 
-def createNewTopic(topicName, num=1):
 
+
+# TODO Add Locks
+# TODO Check tailid initialization
+def CreateNewTopic(topic: str, num = 1):
+    """ 
+        Helper to Create a New Topic, called directly or while creating a producer
+        Returns (True/False, HTTP Response)
+    """
     cursor = conn.cursor()
     cursor.execute("""SELECT * FROM all_brokers WHERE active=1 ORDER BY numberofmessages""")
     all_brokers = cursor.fetchall()
 
     if len(all_brokers) == 0:
-        return ServerErrorResponse('no broker available')
+        return False, ServerErrorResponse('no broker available')
 
     partitions = {}
     for i in range(num):
@@ -116,55 +141,32 @@ def createNewTopic(topicName, num=1):
         partitions[i] =  dictionary
 
     cursor.execute("""SELECT COUNT (*) FROM all_topics""")
-    id = cursor.fetchone()[0]+1
+    id = cursor.fetchone()[0] + 1
     try:
-
-        col_names = sql.SQL(',').join(sql.Identifier(n) for n in ['topicid', 'topicname', 'producers', 'consumers', 'partitions'])
-        col_values = sql.SQL(',').join(sql.Literal(n) for n in [id, topicName, 0,0, json.dumps(partitions)])
+        col_names = sql.SQL(',').join(sql.Identifier(n) for n in ['topicid', 'topicname', 'producers', 'consumers', 'partitions', 'tailids'])
+        col_values = sql.SQL(',').join(sql.Literal(n) for n in [id, topic, 0,0, json.dumps(partitions), json.dumps([1] * len(partitions))])
         cursor.execute(sql.SQL("""INSERT INTO all_topics ({col_names})
                         VALUES ({col_values})""")
                         .format(col_names=col_names, col_values=col_values)
                     )
-        # cursor.execute(sql.SQL("""CREATE TABLE {table_name} (
-        #     messageid BIGINT PRIMARY KEY, 
-        #     message TEXT
-        # )""").format(table_name = sql.Identifier(topicName)))
         conn.commit()
-    except Exception as e:
-        print(e)
+    except:
+        return False, ServerErrorResponse('error in creating topic')
+    finally:
+        cursor.close()
+
+    return True, GoodResponse({'status':'success', 'message':f'topic {topic} successfully created'})
 
 
-    return GoodResponse({'status':'success', 'message':f'topic {topicName} successfully created'})
-
-
-# A
+# Display list of all topics
 @app.route("/topics", methods = ["POST"])
 def CreateTopic():
     data = request.json
-
     if "name" in data:
-        cursor = conn.cursor()
-        sem.acquire()
-        cursor.execute("SELECT * FROM all_topics WHERE topicname = %s",(data["name"],))
-        if len(cursor.fetchall()) != 0:
-            sem.release()
-            cursor.close()
-            response = ServerErrorResponse('topic already present')
-
-        else:
-            try:
-                num = 1
-                if "partitions" in data:
-                    num=data["partitions"]
-
-                r = createNewTopic(data["name"], num)
-                return r
-                
-            except:
-                response = ServerErrorResponse("failed to add topic to database")
-            finally:
-                cursor.close()
-                sem.release()
+        _, response, result = ReturnTopic(data['name'])             # Check if the topic exists
+        if len(result) == 0:
+            num = data["partitions"] if "partitions" in data else 1 
+            _, response = CreateNewTopic(data['name'], num) 
     else:
         response = BadRequestResponse('topic not sent')
     
@@ -228,46 +230,46 @@ def RegisterConsumer():
     print(response)
     return response
 
-# D
+# Producer is registered here
 @app.route("/producer/register", methods = ["POST"])
 def RegisterProducer():
+    """
+        Registers a new producer and assigns it to a topic
+        HTTP Request JSON
+        {
+            "topic": str
+        }
+        Returns producer_id as a good response
+    """
     data = request.json
     if "topic" in data:
-        cursor = conn.cursor()
-        sem.acquire()
-        try: 
-            cursor.execute("SELECT * FROM all_topics WHERE topicname = %s", (data["topic"],))
-            result = cursor.fetchall()
-        except:
-            result = []
-        finally:
-            cursor.close()
-        
+        topic = data['topic']
+        _, response, result = ReturnTopic(topic)
         cursor = conn.cursor()
         try:
-
             if len(result) == 0:    # Create topic if this topic is not present
-                cursor.execute("""SELECT COUNT (*) FROM all_topics""")
                 topicID = cursor.fetchone()[0] + 1
                 producerID = 1
-                
-                cursor.execute("INSERT INTO all_topics (topicid, topicname, producers, consumers, tailids) VALUES (%s, %s, %s, %s, %s)",
-                                (topicID, data["topic"], 1, 1, 1))
-
-                cursor.execute(sql.SQL("""CREATE TABLE {table_name} (
-                    messageid BIGINT PRIMARY KEY, 
-                    message TEXT
-                )""").format(table_name = sql.Identifier(data['topic'])))
+                flag, response = CreateNewTopic(topic, 1)
                 
             else:
                 topicID = result[0][0]
                 producerID = result[0][3]
 
-            cursor.execute("""UPDATE all_topics SET producers = %s WHERE topicname = %s""", (producerID + 1, data['topic']))
-            conn.commit()
-            returnID = (producerID * (MAX_TOPICS) + topicID) * 10 + 1
-            response = GoodResponse({"status": "success", "producer_id": returnID})  
-        
+            if flag == True:   # Topic created properly
+                returnID = (producerID * (MAX_TOPICS) + topicID) * 10 + 1
+                # Add another producer to this topic
+                cursor.execute("""UPDATE all_topics SET producers = %s WHERE topicname = %s""", (producerID + 1, topic))
+                col_names = sql.SQL(',').join(sql.Identifier(n) for n in ['producerid', 'lit'])
+                col_values = sql.SQL(',').join(sql.Literal(n) for n in [str(returnID), int(time.time())])
+                # Add another producer to the global producer list
+                cursor.execute(sql.SQL("""INSERT INTO all_producers ({col_names})
+                                VALUES ({col_values})""")
+                                .format(col_names=col_names, col_values=col_values)
+                            )
+                conn.commit()
+                returnID = (producerID * (MAX_TOPICS) + topicID) * 10 + 1
+                response = GoodResponse({"status": "success", "producer_id": returnID})  
         except:
             response = ServerErrorResponse('error in registering producer')
         finally:
@@ -279,38 +281,98 @@ def RegisterProducer():
     return response
 
 
-# E
+# Producer produces messages
+# TODO Implement round robin functionality instead of random producer
+# TODO Test Pending
 @app.route("/producer/produce", methods = ["POST"])
 def EnqueueMessage():
+    """
+        HTTP Request JSON Format
+        {
+            "topic": str,
+            "producer_id": str,
+            "message": str, 
+            "partition": int (optional)
+        }
+    """
     data = request.json
     if "topic" in data and "producer_id" in data and "message" in data:
-        # Check for data['topic']
-        resp, result = CheckValidityOfID(data['producer_id'], data['topic'], "producer")
-        if result is None: return resp
-        # Get tailid of the topic
-        tid = result[0][4]
-        col_names = sql.SQL(',').join(sql.Identifier(n) for n in ['messageid', 'message'])
-        col_values = sql.SQL(',').join(sql.Literal(n) for n in [tid, data['message']])
-        
-        sem.acquire()
-        cursor = conn.cursor() 
-        try:
-            cursor.execute(sql.SQL("INSERT INTO {table_name} ({col_names}) VALUES ({col_values})").format(table_name = sql.Identifier(data['topic']), 
-                                        col_names = col_names, 
-                                        col_values = col_values))
+        topic = data['topic']
+        producer_id = data['producer_id']
+        message = data['message']
 
-            cursor.execute("UPDATE all_topics SET tailid = %s WHERE topicname = %s", (tid + 1, data['topic']))
+        # Check if the ID is valid
+        resp, result = CheckValidityOfID(producer_id, topic, "producer")
+        if result is None: return resp
+        
+        # Get tailids of the topic
+        tids = json.loads(result[0][4])
+        partitions = json.loads(result[0][5])
+        
+        # Get all active partitions for this topic
+        ap = {}
+        for x in partitions:
+            if partitions[x]['active'] == True:
+                ap[x] = partitions[x] 
+
+        # Check if partition index specified is active
+        if 'partition' in data and data['partition'] not in ap:
+            return ServerErrorResponse('partition not present for this topic') 
+            
+        # Get partition index
+        pindex = data['partition'] if 'partition' in data and data['partition'] in ap else random.randint(0, len(ap) - 1)
+
+        # Change all_producers (the heartbeat, because of this recent interaction)
+        sem.acquire()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("UPDATE all_producers SET list = %s WHERE producerid = %s", (producer_id, int(time.time())))
+            conn.commit()
+        except:
+            pass
+        finally:
+            cursor.close()
+            sem.release()
+
+
+        # Send message request to the broker with this id
+        bid = ap[pindex]['broker'] 
+
+        # Get broker response
+        br = requests.post("http://" + 'b' + str(bid) + ':5000/enqueue', 
+                                json = {
+                                    "topic": topic, 
+                                    "partition": pindex,
+                                    "message": message
+                                },
+                                headers = {'Content-Type': 'application/json'})
+
+        if br.text['status'] == 'failure':
+            return ServerErrorResponse(br.text['message'])
+        
+        # Generate new form of the metadata
+        tids_new = tids
+        tids_new[pindex] += 1
+
+        ap[pindex]['numberofmessages'] += 1
+        
+        # Update metadata (all_topics, all_brokers)
+        sem.acquire()
+        cursor = conn.cursor()
+        try:
+            # Update all_topics
+            cursor.execute("UPDATE all_topics SET tailids = %s, partitions = %s", (json.dumps(tids_new), json.dumps(ap)))
+            # Update all_brokers
+            cursor.execute("SELECT numberofmessages FROM all_brokers WHERE brokerid = %s", (bid, ))
+            nm = cursor.fetchall()[0][0]
+            cursor.execute("UPDATE all_brokers SET numberofmessages = %s WHERE brokerid = %s", (nm + 1, bid))
             conn.commit()
             response = GoodResponse({"status": "success"})
-
-        except Exception as e:
-            print(e)
-            response = ServerErrorResponse('error in adding message to the queue')
-        
+        except:
+            response = ServerErrorResponse('error in updating metadata')
         finally:
-            cursor.close()  
+            cursor.close()
             sem.release()
-    
     else:
         response = BadRequestResponse('topic or producer id not sent')
     
@@ -423,14 +485,33 @@ def recordHeartbeat():
 
 @app.route('/broker/register', methods = ['POST'])
 def createBroker():
+    # TODO add lock
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT (*) FROM all_brokers")
     id = cursor.fetchone()[0] + 1
     cursor.execute("""INSERT INTO all_brokers (brokerid, lastheartbeat, numberofmessages, partitions_assigned, active) VALUES 
         (%s, %s, 0, %s, 1)""",(id, int(time.time()),json.dumps({})))
 
+
     conn.commit()
     return GoodResponse({'status':'success'})
+
+# Heartbeat from brokers
+@app.route("/heartbeat", methods = ['POST'])
+def Heartbeat():
+    # TODO add lock
+    data = request.json
+    brokerid = data['broker_id']
+    timestamp = time.time()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM all_brokers WHERE brokerid = %s", (brokerid,))
+    if len(cursor.fetchone()) == 0:
+        return ServerErrorResponse('unidentified heartbeat: broker not present')
+    cursor.execute("""UPDATE all_brokers SET lastheartbeat = %s WHERE brokerid = %s""", (timestamp, brokerid))
+    conn.commit()
+    return GoodResponse({'status': 'success'})
+
+
 
 
 
@@ -440,10 +521,12 @@ def home():
     
 if __name__ == "__main__":
 
+    DB_HOST = sys.argv[1]
+
     DB_NAME = 'dist_queue_2'
 
     conn = psycopg2.connect(
-            host="db",
+            host=DB_HOST,
             user="postgres",
             password="admin",
         )
@@ -460,7 +543,7 @@ if __name__ == "__main__":
         conn.close()
 
         conn = psycopg2.connect(
-            host="db",
+            host=DB_HOST,
             user="postgres",
             password="admin",
             dbname = DB_NAME
@@ -504,7 +587,7 @@ if __name__ == "__main__":
 
 
     conn = psycopg2.connect(
-            host="db",
+            host=DB_HOST,
             user="postgres",
             password="admin",
             dbname = DB_NAME

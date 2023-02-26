@@ -2,7 +2,7 @@
 # curl -X POST  -H 'Content-Type: application/json' http://127.0.0.1:5000/broker/register
 
 # #create topic
-curl -X POST -d '{"name": "producer_signup", "partitions":2}' -H 'Content-Type: application/json' http://127.0.0.1:5000/topics
+# curl -X POST -d '{"name": "producer_signup", "partitions":2}' -H 'Content-Type: application/json' http://127.0.0.1:5000/topics
 
 #create producer and consumer
 # curl -X POST -d '{"topic": "producer_signup"}' -H 'Content-Type: application/json' http://127.0.0.1:5000/producer/register
@@ -27,3 +27,8 @@ curl -X POST -d '{"name": "producer_signup", "partitions":2}' -H 'Content-Type: 
 
 # Check size should be zero
 # curl -X GET  -d '{"topic": "producer_signup","consumer_id":10000000000000}' -H 'Content-Type: application/json' http://127.0.0.1:5000/size
+
+# Check Broker Partition Assignment Register
+# curl -X POST -d '{"name": "producer_signup", "partition_id": 1}' -H 'Content-Type: application/json' http://127.0.0.1:5001/partitions
+
+curl -X POST -H 'Content-Type: application/json' http://127.0.0.1:5000/broker/register

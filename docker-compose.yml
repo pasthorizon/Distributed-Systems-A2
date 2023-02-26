@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  web:
+  wbm1:
     build: ./broker-manager
-    command: python main.py
+    command: python main.py md1
     volumes:
       - ./broker-manager:/usr/src/app/
     ports:
@@ -11,13 +11,36 @@ services:
     env_file:
       - ./.env.dev
     depends_on:
-      - db
-  db:
+      - md1
+  
+  md1:
     image: postgres:13-alpine
     volumes:
-      - postgres_data:/var/lib/postgresql/data/
+      - md1:/var/lib/postgresql/data/
+    environment: 
+      - POSTGRES_PASSWORD=admin
+  
+  
+  b1:
+    build: ./broker
+    command: python main.py db1 wbm1 1
+    volumes:
+      - ./broker:/usr/src/app/
+    ports:
+      - 5001:5000
+    env_file:
+      - ./.env.dev
+    depends_on:
+      - db1
+  
+  db1:
+    image: postgres:13-alpine
+    volumes:
+      - db1:/var/lib/postgresql/data/
     environment: 
       - POSTGRES_PASSWORD=admin
 
+
 volumes:
-  postgres_data:
+  md1:
+  db1:
