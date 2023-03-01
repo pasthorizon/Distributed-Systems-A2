@@ -21,26 +21,10 @@ MAX_TOPICS = 100000 # Power of 10 only (CAREFUL!!!)
 
 global conn
 
-
-# TODO Replace raw indexing by CID indexing as given below
-# TODO Close exit on termination of main.py file
-# TODO cursor.rollback()
-# all_brokers table        number of messages, broker id, healthcheck, 
-# all_topics: include column for partition metadata 
-# {
-#    partition_1: {    
-#                      broker assignment: 
-#                       number of messages:
-#                       active: 
-#                   },
-#   partition_2: {
-#                   
-#                }
-# }                         active partitions list,            
-
-# all producers table       last interaction time
-# all consumers: column storing json partition offset     last interaction tmie
-
+# TODO Synchronization
+# TODO WAL
+# TODO Partition assignment to brokers at the beginning of partition creation
+#  
 
 def BadRequestResponse(message: str = ""):
     resp = app.response_class(
@@ -77,7 +61,7 @@ def GoodResponse(response: dict = {}):
 def ReturnTopic(topic: str):
     """
         Checks if a topic is present in the database
-        Returns (True/False, HTTP Response, Topic Details)
+        Returns (True/False, HTTP Response, Topic Row Details)
     """
     sem.acquire()
     try: 
@@ -115,18 +99,15 @@ def CheckValidityOfID(id: int, topic: str, client: str):
     else:
         return None, result
 
-
-
-# TODO Add Locks
-# TODO Check tailid initialization
 def CreateNewTopic(topic: str, num = 1):
     """ 
         Helper to Create a New Topic, called directly or while creating a producer
         Returns (True/False, HTTP Response)
     """
     cursor = conn.cursor()
-    cursor.execute("""SELECT * FROM all_brokers WHERE active=1 ORDER BY numberofmessages""")
+    cursor.execute("""SELECT * FROM all_brokers WHERE active = 1 ORDER BY numberofmessages""")
     all_brokers = cursor.fetchall()
+    cursor.close()
 
     if len(all_brokers) == 0:
         return False, ServerErrorResponse('no broker available')
@@ -140,25 +121,76 @@ def CreateNewTopic(topic: str, num = 1):
         }
         partitions[i] =  dictionary
 
-    cursor.execute("""SELECT COUNT (*) FROM all_topics""")
-    id = cursor.fetchone()[0] + 1
+    sem.acquire()
+    cursor = conn.cursor()
     try:
-        col_names = sql.SQL(',').join(sql.Identifier(n) for n in ['topicid', 'topicname', 'producers', 'consumers', 'partitions', 'tailids'])
-        col_values = sql.SQL(',').join(sql.Literal(n) for n in [id, topic, 0,0, json.dumps(partitions), json.dumps([1] * len(partitions))])
-        cursor.execute(sql.SQL("""INSERT INTO all_topics ({col_names})
-                        VALUES ({col_values})""")
-                        .format(col_names=col_names, col_values=col_values)
-                    )
-        conn.commit()
+        cursor.execute("""SELECT COUNT (*) FROM all_topics""")
+        id = cursor.fetchone()[0] + 1
+        col_names = sql.SQL(',').join(sql.Identifier(n) for n in ['topicid', 'topicname', 'producers', 'consumers', 'partitions'])
+        col_values = sql.SQL(',').join(sql.Literal(n) for n in [id, topic, 0, 0, json.dumps(partitions)])
+        query = sql.SQL("""INSERT INTO all_topics ({col_names})
+                        VALUES ({col_values})""").format(col_names=col_names, col_values=col_values)
+                    
+        cursor.execute(query)
+        flag = Broadcast(query.as_string)
+        if flag == True:
+            conn.commit()
+        else:
+            cursor.close()
+            sem.release()
+            return False, ServerErrorResponse('error in creating topic: broadcast error')
     except:
+        cursor.close()
+        sem.release()
         return False, ServerErrorResponse('error in creating topic')
     finally:
         cursor.close()
+        sem.release()
 
     return True, GoodResponse({'status':'success', 'message':f'topic {topic} successfully created'})
 
+def Broadcast(sql: str):
+    id = 0
+    cursor = conn.cursor()
+    sem.acquire()
+    try:
+        cursor.execute("SELECT * FROM all_managers")
+        result = cursor.fetchall()
+        for man in result:
+            if man[0] != id and man[3] == 1:
+                response = requests.post(man[2] + '/sync', 
+                                json = {
+                                    "sender": DB_HOST,
+                                    "query": sql
+                                },
+                                headers = {'Content-Type': 'application/json'})
+
+                if response.status_code != 200:
+                    return False
+        return True
+    
+    except:
+        return False
+
+@app.route("/sync", methods = ['POST'])
+def Sync():
+    data = request.json
+    sql = data["sql"]   
+    sem.acquire()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(sql)
+        conn.commit()
+        response = GoodResponse({})
+    except:
+        response =  ServerErrorResponse('unable to process request')
+    finally:
+        cursor.close()
+        sem.release()
+    return response
 
 # Display list of all topics
+# TODO Add partitions to the brokers
 @app.route("/topics", methods = ["POST"])
 def CreateTopic():
     data = request.json
@@ -167,13 +199,40 @@ def CreateTopic():
         if len(result) == 0:
             num = data["partitions"] if "partitions" in data else 1 
             _, response = CreateNewTopic(data['name'], num) 
+            _, response, result = ReturnTopic(data['name'])
+        
+        # Send partitions to brokers and update the all_brokers metadata
+        partition = json.loads(result[0][4])
+        for x in partition:
+            broker = x["broker"]
+            response = requests.post("http://" + 'b' + str(broker) + ':5000/partition', 
+                                json = {
+                                    "topic": data['name'], 
+                                    "partition": x,
+                                },
+                                headers = {'Content-Type': 'application/json'})
+
+            if response.status_code != 200:
+                # This partition could not be registered and hence is inactive
+                partition[x]["active"] = False
+                cursor = conn.cursor()
+                query = sql.SQL("""UPDATE all_topics SET partitions = {part} 
+                                WHERE topicname = {tname}""").format(part = sql.Literal(json.dumps(partition), 
+                                                                    tname = data['name']))
+                cursor.execute(query)
+                if Broadcast(query.as_string) == False:
+                    cursor.close()
+                    return ServerErrorResponse('error in creating topic: broadcast failed')    
+                conn.commit()
+                cursor.close()
+
     else:
         response = BadRequestResponse('topic not sent')
     
     print(response)
     return response   
 
-# B
+# Get the list of all topics in the write only broker manager
 @app.route("/topics", methods = ['GET'])
 def ListTopics():
     cursor = conn.cursor()
@@ -189,41 +248,70 @@ def ListTopics():
         sem.release() #
     return response
 
-# C
+# Consumer is registered here
+# TODO update partitionoffsets and lastpartition when created
 @app.route("/consumer/register", methods = ["POST"])
 def RegisterConsumer():
+    """
+        Registers a consumer and adds it to a topic
+        HTTP Request JSON 
+        {
+            "topic": str
+        }
+        returns, HTTP Response specifying the ID if successful or failure Response
+        HTTP Good Response JSON
+        {
+            "status": "success",
+            "consumer_id": int
+        }
+    """
     data = request.json
     if "topic" in data:
-        cursor = conn.cursor()
-        sem.acquire()
-        try:
-            cursor.execute("""SELECT * FROM all_topics WHERE topicname = %s""", (data['topic'],))
-            ids = cursor.fetchall()
-        except:
-            ids = []
-        finally:
-            cursor.close()
-        
-        if len(ids) != 0:
+        # update all_topics
+        topic = data['topic']
+        _, response, result = ReturnTopic(topic)
+        if len(result) == 0: # Topic not present
+            response = ServerErrorResponse('topic not present in the database')
+
+        else:
+            topicID = response[0][0]
+            consumers = response[0][2]
+
+            consumerID = (consumers * (MAX_TOPICS) + topicID) * 10
+            sem.acquire()
             cursor = conn.cursor()
             try:
-                consumerID = ids[0][2]
-                topicID = ids[0][0]
-                returnID = (consumerID * (MAX_TOPICS) + topicID) * 10
+                query = sql.SQL("""UPDATE all_topics SET consumers = {con} 
+                                    WHERE topicname = {top}""").format(con = sql.Literal(consumers + 1), 
+                                                                       top = sql.Literal(topic))
+                cursor.execute(query)
 
-                response = GoodResponse({"status": "success", "consumer_id": returnID})
-                cursor.execute("""UPDATE all_topics SET consumers = %s WHERE topicname = %s""", (consumerID + 1, data['topic']))
-                cursor.execute("""INSERT INTO all_consumers (consumerid, queueoffset) VALUES (%s, %s)""", (str(returnID), 1))
+                if Broadcast(query.as_string) == False:
+                    cursor.close()
+                    sem.release()
+                    return ServerErrorResponse('error in registering consumer: broadcast failed')
+                
+                col_names = sql.SQL(',').join(sql.Identifier(n) for n in ['consumerid', 'lit'])
+                col_values = sql.SQL(',').join(sql.Literal(n) for n in [str(consumerID), int(time.time())])
+                # Add another producer to the global consumer list
+                query = sql.SQL("""INSERT INTO all_consumers ({col_names})
+                                VALUES ({col_values})""").format(col_names=col_names, col_values=col_values)
+                            
+                cursor.execute(query)
+                if Broadcast(query.as_string) == False:
+                    cursor.close()
+                    sem.release()
+                    return ServerErrorResponse('error in registering consumer: broadcast failed')
+                
                 conn.commit()
+                response = GoodResponse({"status": "success", "consumer_id": consumerID})
+
             except:
-                response = ServerErrorResponse('error in registering the consumer')
+                response = ServerErrorResponse('error in registering consumer')
             finally:
                 cursor.close()
                 sem.release()
-        else: 
-            sem.release()
-            response = ServerErrorResponse('topic not present in the database')
-            
+
     else:
         response = BadRequestResponse('topic not sent')
     
@@ -259,7 +347,16 @@ def RegisterProducer():
             if flag == True:   # Topic created properly
                 returnID = (producerID * (MAX_TOPICS) + topicID) * 10 + 1
                 # Add another producer to this topic
-                cursor.execute("""UPDATE all_topics SET producers = %s WHERE topicname = %s""", (producerID + 1, topic))
+                query = sql.SQL("""UPDATE all_topics SET producers = {con} 
+                                    WHERE topicname = {top}""").format(con = sql.Literal(producerID + 1), 
+                                                                       top = sql.Literal(topic))
+                cursor.execute(query)
+                # Broadcast the query
+                if Broadcast(query.as_string) == False:
+                    cursor.close()
+                    sem.release()
+                    return ServerErrorResponse('error in registering consumer: broadcast failed')
+                
                 col_names = sql.SQL(',').join(sql.Identifier(n) for n in ['producerid', 'lit'])
                 col_values = sql.SQL(',').join(sql.Literal(n) for n in [str(returnID), int(time.time())])
                 # Add another producer to the global producer list
@@ -267,8 +364,8 @@ def RegisterProducer():
                                 VALUES ({col_values})""")
                                 .format(col_names=col_names, col_values=col_values)
                             )
+                
                 conn.commit()
-                returnID = (producerID * (MAX_TOPICS) + topicID) * 10 + 1
                 response = GoodResponse({"status": "success", "producer_id": returnID})  
         except:
             response = ServerErrorResponse('error in registering producer')
@@ -305,9 +402,8 @@ def EnqueueMessage():
         resp, result = CheckValidityOfID(producer_id, topic, "producer")
         if result is None: return resp
         
-        # Get tailids of the topic
-        tids = json.loads(result[0][4])
-        partitions = json.loads(result[0][5])
+        # Get partitions of the topic
+        partitions = json.loads(result[0][4])
         
         # Get all active partitions for this topic
         ap = {}
@@ -323,10 +419,11 @@ def EnqueueMessage():
         pindex = data['partition'] if 'partition' in data and data['partition'] in ap else random.randint(0, len(ap) - 1)
 
         # Change all_producers (the heartbeat, because of this recent interaction)
+        # No need to update lit for read only managers
         sem.acquire()
         cursor = conn.cursor()
         try:
-            cursor.execute("UPDATE all_producers SET list = %s WHERE producerid = %s", (producer_id, int(time.time())))
+            cursor.execute("UPDATE all_producers SET lit = %s WHERE producerid = %s", (producer_id, int(time.time())))
             conn.commit()
         except:
             pass
@@ -351,18 +448,22 @@ def EnqueueMessage():
             return ServerErrorResponse(br.text['message'])
         
         # Generate new form of the metadata
-        tids_new = tids
-        tids_new[pindex] += 1
-
         ap[pindex]['numberofmessages'] += 1
         
         # Update metadata (all_topics, all_brokers)
         sem.acquire()
         cursor = conn.cursor()
         try:
-            # Update all_topics
-            cursor.execute("UPDATE all_topics SET tailids = %s, partitions = %s", (json.dumps(tids_new), json.dumps(ap)))
-            # Update all_brokers
+            # Update all_topics (and broadcast)
+            query = sql.SQL("UPDATE all_topics SET partitions = {part}").format(part = json.dumps(ap))
+            cursor.execute(query)
+            flag = Broadcast(query.as_string)
+            if flag == False:
+                cursor.close()
+                sem.release()
+                return ServerErrorResponse('error in updating metadata: broadcast failed')
+            
+            # Update all_brokers (no need to broadcast this change)
             cursor.execute("SELECT numberofmessages FROM all_brokers WHERE brokerid = %s", (bid, ))
             nm = cursor.fetchall()[0][0]
             cursor.execute("UPDATE all_brokers SET numberofmessages = %s WHERE brokerid = %s", (nm + 1, bid))
@@ -375,82 +476,6 @@ def EnqueueMessage():
             sem.release()
     else:
         response = BadRequestResponse('topic or producer id not sent')
-    
-    print(response)
-    return response
-
-
-# F
-@app.route('/consumer/consume', methods = ["GET"])
-def DequeueMessage():
-    data = request.json
-    if "topic" in data and "consumer_id" in data:
-        resp, result = CheckValidityOfID(id = data['consumer_id'], topic = data['topic'], client = "consumer")
-        if result is None: return resp
-        cursor = conn.cursor()
-        sem.acquire()
-        try: 
-            cursor.execute("""SELECT * FROM all_consumers WHERE consumerid = %s""",(str(data["consumer_id"]),))
-            hid = cursor.fetchone()[1]
-        except:
-            sem.release()
-            cursor.close()
-            return ServerErrorResponse('error in accessing all_consumers table')
-        
-        tid = result[0][4]
-        if hid == tid:
-            response = ServerErrorResponse('consumer is up to date')
-        else:
-            try:
-                cursor.execute(sql.SQL("""SELECT message 
-                                            FROM {table_name} 
-                                            WHERE messageid = {hid}""").format(table_name = sql.Identifier(data['topic']), 
-                                            hid = sql.Literal(hid)))
-
-                message = cursor.fetchall()[0][0]
-                cursor.execute("UPDATE all_consumers SET queueoffset = %s WHERE consumerid = %s", (hid + 1, str(data['consumer_id'])))
-                response = GoodResponse({"status": "success", "message": message})
-                conn.commit()
-            except:
-                response = ServerErrorResponse('error in fetching message from the queue')
-
-        sem.release()
-        cursor.close()
-    
-    else:
-        response = BadRequestResponse('topic or consumer id not sent')
-
-    print(response)
-    return response
-
-# G
-@app.route('/size', methods = ['GET'])
-def Size():
-    print(conn)
-    data = request.json
-    
-    if "topic" in data and "consumer_id" in data:
-        resp, result = CheckValidityOfID(data['consumer_id'], data['topic'], "consumer")
-        if result is None: return resp
-        
-        sem.acquire()
-        cursor = conn.cursor()
-        try: 
-            cursor.execute("SELECT tailid FROM all_topics WHERE topicname = %s",(data['topic'],))
-            tid = cursor.fetchone()[0]
-            cursor.execute(sql.SQL("SELECT queueoffset FROM all_consumers WHERE consumerid={consumerID}").
-                        format(consumerID = sql.Literal(str(data['consumer_id']))))
-            conn.commit()
-            queueoffset = cursor.fetchone()[0]
-            response = GoodResponse({"status": "success", "size": tid - queueoffset})
-        
-        except: 
-            response = ServerErrorResponse('consumer is up to date')
-        finally:
-            cursor.close()
-            sem.release()
-    else:
-        response = BadRequestResponse('topic or consumer id not sent')
     
     print(response)
     return response
@@ -483,6 +508,7 @@ def recordHeartbeat():
 
             return GoodResponse({"status": "success"})
 
+
 @app.route('/broker/register', methods = ['POST'])
 def createBroker():
     # TODO add lock
@@ -510,10 +536,6 @@ def Heartbeat():
     cursor.execute("""UPDATE all_brokers SET lastheartbeat = %s WHERE brokerid = %s""", (timestamp, brokerid))
     conn.commit()
     return GoodResponse({'status': 'success'})
-
-
-
-
 
 @app.route("/")
 def home():
@@ -555,13 +577,13 @@ if __name__ == "__main__":
                 topicname VARCHAR(255) PRIMARY KEY,
                 consumers BIGINT,
                 producers BIGINT,
-                tailids JSONB,
                 partitions JSONB
                 )""")
 
         cursor.execute("""CREATE TABLE all_consumers(
             consumerid VARCHAR(255) PRIMARY KEY,
             partitionoffsets JSONB,
+            lastindex SMALLINT,
             lit BIGINT)""")
         
         cursor.execute("""CREATE TABLE all_producers(
@@ -577,8 +599,14 @@ if __name__ == "__main__":
         )
         """)
 
-
-
+        cursor.execute("""
+            CREATE TABLE all_managers(
+                managerid SMALLINT PRIMARY KEY,
+                managertype SMALLINT,
+                ip VARCHAR(25),
+                active SMALLINT
+            )
+        """)
         
         conn.commit()
 

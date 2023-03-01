@@ -25,16 +25,9 @@ global conn
 
 global BROKER_MANAGER
 
-
-# TODO Replace raw indexing by CID indexing as given below
-# TODO Close exit on termination of main.py file
-# TODO cursor.rollback()
-
-
 # TODO Enqueue (done, test pending)
-# TODO Dequeue
+# TODO Dequeue (done, test pending)
 # TODO Heartbeat (done)
-# TODO Checkup
 # TODO RegisterNewPartition (done, test pending)
 
 def BadRequestResponse(message: str = ""):
@@ -153,49 +146,34 @@ def EnqueueMessage():
     
     return response
 
+@app.route("/dequeue", methods = ['GET'])
+def DequeueMessage():
+    data = request.json
+    topic = data['topic']
+    partition = data['partition']
+    offset = data['offset']
 
-# # F
-# @app.route('/consumer/consume', methods = ["GET"])
-# def DequeueMessage():
-#     data = request.json
-#     if "topic" in data and "consumer_id" in data:
-#         resp, result = CheckValidityOfID(id = data['consumer_id'], topic = data['topic'], client = "consumer")
-#         if result is None: return resp
-#         cursor = conn.cursor()
-#         sem.acquire()
-#         try: 
-#             cursor.execute("""SELECT * FROM all_consumers WHERE consumerid = %s""",(str(data["consumer_id"]),))
-#             hid = cursor.fetchone()[1]
-#         except:
-#             sem.release()
-#             cursor.close()
-#             return ServerErrorResponse('error in accessing all_consumers table')
-        
-#         tid = result[0][4]
-#         if hid == tid:
-#             response = ServerErrorResponse('consumer is up to date')
-#         else:
-#             try:
-#                 cursor.execute(sql.SQL("""SELECT message 
-#                                             FROM {table_name} 
-#                                             WHERE messageid = {hid}""").format(table_name = sql.Identifier(data['topic']), 
-#                                             hid = sql.Literal(hid)))
+    sem.acquire()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM all_partitions WHERE topicname = %s AND partitionid = %s", (topic, partition))
+        tid = cursor.fetchall()[0][2]
+        if offset == tid:
+            response = ServerErrorResponse('requested partition has no new messages')
+        else:
+            cursor.execute(sql.SQL("""SELECT message FROM {table_name} WHERE messageid = {hid}""").format(
+                                        table_name = sql.Identifier(topic + "_" + partition), 
+                                        hid = sql.Literal(offset)))
+            message = cursor.fetchall()[0][0]
+            response = GoodResponse({"status": "success", "message": str(message)})
+    except:
+        response = ServerErrorResponse('error in removing message from queue')
+    finally:
+        cursor.close()
+        sem.release()
 
-#                 message = cursor.fetchall()[0][0]
-#                 cursor.execute("UPDATE all_consumers SET queueoffset = %s WHERE consumerid = %s", (hid + 1, str(data['consumer_id'])))
-#                 response = GoodResponse({"status": "success", "message": message})
-#                 conn.commit()
-#             except:
-#                 response = ServerErrorResponse('error in fetching message from the queue')
-
-#         sem.release()
-#         cursor.close()
-    
-#     else:
-#         response = BadRequestResponse('topic or consumer id not sent')
-
-#     print(response)
-#     return response
+    print(response)
+    return response
 
 # G
 # @app.route('/size', methods = ['GET'])
@@ -246,13 +224,9 @@ def home():
 if __name__ == "__main__":
 
     DB_HOST = str(sys.argv[1])
-
     BROKER_MANAGER = sys.argv[2]
-
     BROKER_ID = sys.argv[3]
-
     DB_NAME = 'dist_queue'
-
     conn = psycopg2.connect(
             host=DB_HOST,
             user="postgres",
