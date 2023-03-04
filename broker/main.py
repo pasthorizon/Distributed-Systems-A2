@@ -65,13 +65,15 @@ def GoodResponse(response: dict = {}):
 @app.route("/partitions", methods = ["POST"])
 def RegisterNewPartition():
     data = request.json
-    topic_name = data['name']
-    partition_id = data['partition_id']
+    topic_name = data['topic']
+    partition_id = data['partition']
 
     cursor = conn.cursor()
     sem.acquire()
     cursor.execute("SELECT * FROM all_partitions WHERE topicname = %s AND partitionid = %s",(topic_name, partition_id))
-    if len(cursor.fetchall()) != 0:
+    result = cursor.fetchall()
+    if len(result) != 0:
+        print("hahahahahahhah", DB_NAME, DB_HOST, result)
         sem.release()
         cursor.close()
         response = ServerErrorResponse('partition already present')
@@ -90,9 +92,10 @@ def RegisterNewPartition():
             cursor.execute(sql.SQL("""CREATE TABLE {table_name} (
                 messageid BIGINT PRIMARY KEY, 
                 message TEXT
-            )""").format(table_name = sql.Identifier(data['name'] + '_' + str(partition_id))))
+            )""").format(table_name = sql.Identifier(data['topic'] + '_' + str(partition_id))))
             conn.commit()
-        except:
+        except Exception as e:
+            print("from 98",e)
             response = ServerErrorResponse("failed to add partition to database")
         finally:
             cursor.close()
@@ -162,11 +165,12 @@ def DequeueMessage():
             response = ServerErrorResponse('requested partition has no new messages')
         else:
             cursor.execute(sql.SQL("""SELECT message FROM {table_name} WHERE messageid = {hid}""").format(
-                                        table_name = sql.Identifier(topic + "_" + partition), 
+                                        table_name = sql.Identifier(topic + "_" + str(partition)), 
                                         hid = sql.Literal(offset)))
             message = cursor.fetchall()[0][0]
             response = GoodResponse({"status": "success", "message": str(message)})
-    except:
+    except Exception as e:
+        print(e)
         response = ServerErrorResponse('error in removing message from queue')
     finally:
         cursor.close()
@@ -281,6 +285,6 @@ if __name__ == "__main__":
 
     # Heartbeats are sent by a separate thread
     heartbeat_thread = threading.Thread(target = Heartbeat)
-    heartbeat_thread.start()
+    # heartbeat_thread.start()
 
     app.run(debug=True, host = '0.0.0.0')

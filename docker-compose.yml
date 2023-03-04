@@ -16,7 +16,7 @@ services:
   wmd1:
     image: postgres:13-alpine
     volumes:
-      - md1:/var/lib/postgresql/data/
+      - wmd1:/var/lib/postgresql/data/
     environment: 
       - POSTGRES_PASSWORD=admin
   
@@ -26,7 +26,7 @@ services:
     volumes:
       - ./broker-manager:/usr/src/app/
     ports:
-      - 5000:5000
+      - 5002:5000
     env_file:
       - ./.env.dev
     depends_on:
@@ -35,10 +35,29 @@ services:
   rmd1:
     image: postgres:13-alpine
     volumes:
-      - md1:/var/lib/postgresql/data/
+      - rmd1:/var/lib/postgresql/data/
     environment: 
       - POSTGRES_PASSWORD=admin
   
+  rbm2:
+    build: ./broker-manager
+    command: python read.py rmd2
+    volumes:
+      - ./broker-manager:/usr/src/app/
+    ports:
+      - 5003:5000
+    env_file:
+      - ./.env.dev
+    depends_on:
+      - rmd2
+  
+  rmd2:
+    image: postgres:13-alpine
+    volumes:
+      - rmd2:/var/lib/postgresql/data/
+    environment: 
+      - POSTGRES_PASSWORD=admin
+
   b1:
     build: ./broker
     command: python main.py db1 wbm1 1
@@ -58,8 +77,19 @@ services:
     environment: 
       - POSTGRES_PASSWORD=admin
 
+  # nginx:
+  #   image: nginx:latest
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #   ports: 
+  #     - 8080:80
+  #   depends_on:
+  #     - rbm1
+  #     - rbm2
+
 
 volumes:
   wmd1:
   rmd1:
+  rmd2:
   db1:

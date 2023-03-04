@@ -62,11 +62,13 @@ def ReturnTopic(topic: str):
     """
     sem.acquire()
     try: 
+        cursor = conn.cursor()
         cursor.execute("""SELECT * FROM all_topics WHERE topicname = %s""",(topic,))
         result = cursor.fetchall()
         sem.release()
         cursor.close()
-    except:
+    except Exception as e:
+        print (e)
         sem.release()
         cursor.close()
         return False, ServerErrorResponse('error in accessing server'), []
@@ -98,15 +100,16 @@ def CheckValidityOfID(id: int, topic: str, client: str):
         return None, result
     
 def Broadcast(sql: str):
-    id = int(DB_HOST.replace('rbm', ''))
+    id = int(DB_HOST.replace('rmd', ''))
     cursor = conn.cursor()
-    sem.acquire()
+    # sem.acquire()
     try:
         cursor.execute("SELECT * FROM all_managers")
         result = cursor.fetchall()
         for man in result:
             if man[0] != id and man[3] == 1:
-                response = requests.post(man[2] + '/sync', 
+                url = 'http://' + man[2] + ':5000/sync'
+                response = requests.post(url, 
                                 json = {
                                     "sender": DB_HOST,
                                     "query": sql
@@ -123,7 +126,7 @@ def Broadcast(sql: str):
 @app.route("/sync", methods = ['POST'])
 def Sync():
     data = request.json
-    sql = data["sql"]   
+    sql = data["query"]   
     sem.acquire()
     cursor = conn.cursor()
     try:
@@ -173,7 +176,7 @@ def DequeueMessage():
         if result is None: return resp
         # Steps
 
-        partitions = json.loads(result[0][4])
+        partitions = result[0][4]
         active_partitions = [x for x in partitions.keys() if partitions[x]["active"] == True]
         if len(active_partitions) == 0:
             # Print no active partitions
@@ -181,30 +184,51 @@ def DequeueMessage():
         
         sem.acquire()
         try: 
+            cursor = conn.cursor()
             cursor.execute("""SELECT * FROM all_consumers WHERE consumerid = %s""",(str(consumer_id),))
             result2 = cursor.fetchall()
-            offsets = json.loads(result2[0][1])
+            offsets = result2[0][1]
             lastp = result2[0][2]
             message = ''
+            # print(result2)
             # Find the next active partition which has pending messages
-            for i in range(len(partitions)):
-                cp = (lastp + i + 1) % len(partitions)
+            if 'partition' in data:
+                cp = data['partition']
                 nextp = cp
-                if partitions[cp]["active"] == True:
-                    bid = partitions[cp]["broker"]
-                    # Check if cp gets a response
-                    response = requests.get("http://" + 'b' + str(bid) + ':5000/enqueue', 
-                                json = {
-                                    "topic": topic, 
-                                    "partition": cp,
-                                    "offset": offsets[cp]
-                                },
-                                headers = {'Content-Type': 'application/json'})
+                bid = partitions[str(cp)]["broker"]
+                        # Check if cp gets a response
+                response = requests.get("http://" + 'b' + str(bid) + ':5000/dequeue', 
+                            json = {
+                                "topic": topic, 
+                                "partition": cp,
+                                "offset": offsets[str(cp)]
+                            },
+                            headers = {'Content-Type': 'application/json'})
+                print(response.json()['message'])
+                if response.json()['status'] == 'success':
+                    offsets[str(cp)] += 1
+                    message = response.json()['message']
 
-                    if response.text['status'] == 'success':
-                        offsets[cp] += 1
-                        message = response.text['message']
-                        break 
+            else:
+                for i in range(len(partitions)):
+                    cp = (lastp + i + 1) % len(partitions)
+                    nextp = cp
+                    # print(partitions[str(cp)])
+                    if partitions[str(cp)]["active"] == True:
+                        bid = partitions[str(cp)]["broker"]
+                        # Check if cp gets a response
+                        response = requests.get("http://" + 'b' + str(bid) + ':5000/dequeue', 
+                                    json = {
+                                        "topic": topic, 
+                                        "partition": cp,
+                                        "offset": offsets[str(cp)]
+                                    },
+                                    headers = {'Content-Type': 'application/json'})
+                        print(response.json()['message'])
+                        if response.json()['status'] == 'success':
+                            offsets[str(cp)] += 1
+                            message = response.json()['message']
+                            break 
             
             if message == '':
                 sem.release()
@@ -213,19 +237,20 @@ def DequeueMessage():
             
             # Find the next query from this partition
             # Update all_consumers
-            query = sql.SQL("""UPDATE all_consumers SET partitionoffset = {off} AND lastindex = {index}
-                    WHERE consumer_id = {id}""").format(off = sql.Literal(json.dumps(offsets)), 
+            query = sql.SQL("""UPDATE all_consumers SET partitionoffsets = {off}, lastindex = {index}
+                    WHERE consumerid = {id}""").format(off = sql.Literal(json.dumps(offsets)), 
                                                         index = sql.Literal(nextp), 
                                                         id = sql.Literal(str(consumer_id)))
             cursor.execute(query)
             # ACK synchronize and get ACK for this changes
-            flag = Broadcast(query.as_string)
+            flag = Broadcast(query.as_string(conn))
             if flag == True:
                 conn.commit()
                 response = GoodResponse({"status": "success", "message": message})
             else:
                 response = ServerErrorResponse('error in broadcasting')
-        except:
+        except Exception as e:
+            print(e)
             response =  ServerErrorResponse('error in ')
         finally:
             sem.release()
@@ -283,7 +308,7 @@ def Login():
 
 @app.route("/")
 def home():
-    return "Hello, World!"
+    return f"Hello, World from {DB_HOST}!"
     
 if __name__ == "__main__":
 
@@ -335,7 +360,6 @@ if __name__ == "__main__":
             brokerid SMALLINT PRIMARY KEY,
             lastheartbeat BIGINT,   
             numberofmessages BIGINT,
-            partitions_assigned JSONB,
             active SMALLINT
         )
         """)
