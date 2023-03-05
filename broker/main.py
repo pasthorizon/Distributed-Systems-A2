@@ -7,6 +7,7 @@ import sys
 import requests
 from urllib import response
 import time
+from responses import GoodResponse, ServerErrorResponse
 
 app = Flask(__name__)
 
@@ -29,37 +30,6 @@ global BROKER_MANAGER
 # TODO Dequeue (done, test pending)
 # TODO Heartbeat (done)
 # TODO RegisterNewPartition (done, test pending)
-
-def BadRequestResponse(message: str = ""):
-    resp = app.response_class(
-                response=json.dumps({
-                    "status": "failure", 
-                    "message": 'Bad Request: ' + message
-                }),
-                status = 400,
-                mimetype = 'application/json'
-            )
-    return resp
-
-def ServerErrorResponse(message: str = ""):
-    resp = app.response_class(
-                response=json.dumps({
-                    "status": "failure", 
-                    "message": 'Server Error: ' + message
-                }),
-                status = 500,
-                mimetype = 'application/json'
-            )
-    return resp
-
-def GoodResponse(response: dict = {}):
-    resp = app.response_class(
-                response=json.dumps(response), 
-                status = 200,
-                mimetype = 'application/json'
-            )
-    
-    return resp
 
 
 @app.route("/partitions", methods = ["POST"])
@@ -178,48 +148,6 @@ def DequeueMessage():
 
     print(response)
     return response
-
-# G
-# @app.route('/size', methods = ['GET'])
-# def Size():
-#     print(conn)
-#     data = request.json
-#     if "topic" in data and "consumer_id" in data:
-#         resp, result = CheckValidityOfID(data['consumer_id'], data['topic'], "consumer")
-#         if result is None: return resp
-        
-#         sem.acquire()
-#         cursor = conn.cursor()
-#         try: 
-#             cursor.execute("SELECT tailid FROM all_topics WHERE topicname = %s",(data['topic'],))
-#             tid = cursor.fetchone()[0]
-#             cursor.execute(sql.SQL("SELECT queueoffset FROM all_consumers WHERE consumerid={consumerID}").
-#                         format(consumerID = sql.Literal(str(data['consumer_id']))))
-#             conn.commit()
-#             queueoffset = cursor.fetchone()[0]
-#             response = GoodResponse({"status": "success", "size": tid - queueoffset})
-        
-#         except: 
-#             response = ServerErrorResponse('consumer is up to date')
-#         finally:
-#             cursor.close()
-#             sem.release()
-#     else:
-#         response = BadRequestResponse('topic or consumer id not sent')
-    
-#     print(response)
-#     return response
-
-
-# @app.route('/login', methods = ['GET'])
-# def Login():
-#     data = request.json
-#     if "topic" in data and "id" in data and "type" in data:
-#         resp, query = CheckValidityOfID(data['id'], data['topic'], data['type'])
-#         return GoodResponse({"status": "success"}) if query is not None else resp
-#     else:
-#         return BadRequestResponse('topic or consumer id not sent')
-
 
 @app.route("/")
 def home():

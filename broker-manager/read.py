@@ -9,6 +9,7 @@ import time
 import sys
 import random
 import requests
+from responses import ServerErrorResponse, BadRequestResponse, GoodResponse
 
 app = Flask(__name__)
 
@@ -20,39 +21,6 @@ global MAX_TOPICS
 MAX_TOPICS = 100000 # Power of 10 only (CAREFUL!!!)
 
 global conn
-
-
-# TODO Synchronization, size functionality
-def BadRequestResponse(message: str = ""):
-    resp = app.response_class(
-                response=json.dumps({
-                    "status": "failure", 
-                    "message": 'Bad Request: ' + message
-                }),
-                status = 400,
-                mimetype = 'application/json'
-            )
-    return resp
-
-def ServerErrorResponse(message: str = ""):
-    resp = app.response_class(
-                response=json.dumps({
-                    "status": "failure", 
-                    "message": 'Server Error: ' + message
-                }),
-                status = 500,
-                mimetype = 'application/json'
-            )
-    return resp
-
-def GoodResponse(response: dict = {}):
-    resp = app.response_class(
-                response=json.dumps(response), 
-                status = 200,
-                mimetype = 'application/json'
-            )
-    
-    return resp
 
 
 def ReturnTopic(topic: str):
@@ -77,7 +45,6 @@ def ReturnTopic(topic: str):
         return False, ServerErrorResponse('topic not present in database'), []
     
     return True, GoodResponse({'status':'success'}), result
-
 
 def CheckValidityOfID(id: int, topic: str, client: str):
     """
@@ -265,33 +232,49 @@ def DequeueMessage():
 # G
 @app.route('/size', methods = ['GET'])
 def Size():
-    print(conn)
+    """
+        Gets an unread message for consumer with ID = consumer_id
+        HTTP Request JSON Format
+        {
+            "topic": str,
+            "consumer_id": str
+        }
+        Return
+        Partition wise size mentions
+        {
+            0: int,
+            1: int, 
+            ...
+
+        }
+    """
     data = request.json
-    
     if "topic" in data and "consumer_id" in data:
-        resp, result = CheckValidityOfID(data['consumer_id'], data['topic'], "consumer")
+        topic = data['topic']
+        consumer_id = data['consumer_id']
+        resp, result = CheckValidityOfID(id = consumer_id, topic = topic, client = "consumer")
         if result is None: return resp
+        partitions = result[0][4]
         
-        sem.acquire()
         cursor = conn.cursor()
-        try: 
-            cursor.execute("SELECT tailid FROM all_topics WHERE topicname = %s",(data['topic'],))
-            tid = cursor.fetchone()[0]
-            cursor.execute(sql.SQL("SELECT queueoffset FROM all_consumers WHERE consumerid={consumerID}").
-                        format(consumerID = sql.Literal(str(data['consumer_id']))))
-            conn.commit()
-            queueoffset = cursor.fetchone()[0]
-            response = GoodResponse({"status": "success", "size": tid - queueoffset})
-        
-        except: 
-            response = ServerErrorResponse('consumer is up to date')
-        finally:
+        try:
+            cursor.execute("SELECT * FROM all_consumers WHERE consumer_id = %s", (consumer_id,))
+            offsets = cursor.fetchall()[0][1]
             cursor.close()
-            sem.release()
+            mess = {}
+            for partition in partitions:
+                mess[partition] = partitions[partition]["numberofmessages"] - offsets[partition]    
+
+            response = GoodResponse({"status": "success", "size": json.dumps(mess)})
+
+        except Exception as e:
+            response = ServerErrorResponse(f"Error in accessing offsets => {e}")
+
+        response = GoodResponse({"status": "success", "size": json.dumps(mess)})        
+        
     else:
         response = BadRequestResponse('topic or consumer id not sent')
-    
-    print(response)
+
     return response
 
 
@@ -355,6 +338,9 @@ if __name__ == "__main__":
             lastindex SMALLINT,
             lit BIGINT)""")
         
+        cursor.execute("""CREATE TABLE all_producers(
+            producerid VARCHAR(255) PRIMARY KEY,
+            lit BIGINT)""")
         
         cursor.execute("""CREATE TABLE all_brokers(
             brokerid SMALLINT PRIMARY KEY,

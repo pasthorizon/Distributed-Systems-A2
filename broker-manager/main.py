@@ -9,9 +9,10 @@ import time
 import sys
 import random
 import requests
+from responses import ServerErrorResponse, BadRequestResponse, GoodResponse
+
 
 app = Flask(__name__)
-
 
 global sem
 sem = threading.Semaphore() # Semaphore for parallel executions
@@ -21,42 +22,9 @@ MAX_TOPICS = 100000 # Power of 10 only (CAREFUL!!!)
 
 global conn
 
-# TODO Synchronization
-# TODO WAL
-# TODO Partition assignment to brokers at the beginning of partition creation
-#  
-
-def BadRequestResponse(message: str = ""):
-    resp = app.response_class(
-                response=json.dumps({
-                    "status": "failure", 
-                    "message": 'Bad Request: ' + message
-                }),
-                status = 400,
-                mimetype = 'application/json'
-            )
-    return resp
-
-def ServerErrorResponse(message: str = ""):
-    resp = app.response_class(
-                response=json.dumps({
-                    "status": "failure", 
-                    "message": 'Server Error: ' + message
-                }),
-                status = 500,
-                mimetype = 'application/json'
-            )
-    return resp
-
-def GoodResponse(response: dict = {}):
-    resp = app.response_class(
-                response=json.dumps(response), 
-                status = 200,
-                mimetype = 'application/json'
-            )
-    
-    return resp
-
+# TODO Synchronization (done)
+# TODO WAL (not required)
+# TODO Partition assignment to brokers at the beginning of partition creation (done)
 
 def ReturnTopic(topic: str):
     """
@@ -80,7 +48,6 @@ def ReturnTopic(topic: str):
         return False, ServerErrorResponse('topic not present in database'), []
     
     return True, GoodResponse({'status':'success'}), result
-
 
 def CheckValidityOfID(id: int, topic: str, client: str):
     """
@@ -293,7 +260,8 @@ def RegisterConsumer():
         HTTP Good Response JSON
         {
             "status": "success",
-            "consumer_id": int
+            "consumer_id": int,
+            "num_partitions": int
         }
     """
     data = request.json
@@ -308,6 +276,7 @@ def RegisterConsumer():
         else:
             topicID = result[0][0]
             consumers = result[0][2]
+            num_partitions = len(result[0][4].keys())
 
             consumerID = (consumers * (MAX_TOPICS) + topicID) * 10
             sem.acquire()
@@ -341,7 +310,9 @@ def RegisterConsumer():
                     return ServerErrorResponse('error in registering consumer: broadcast failed')
                 
                 conn.commit()
-                response = GoodResponse({"status": "success", "consumer_id": consumerID})
+                response = GoodResponse({"status": "success", 
+                                         "consumer_id": consumerID,
+                                         "num_partitions": num_partitions})
 
             except:
                 response = ServerErrorResponse('error in registering consumer')
@@ -364,7 +335,7 @@ def RegisterProducer():
         {
             "topic": str
         }
-        Returns producer_id as a good response
+        Returns (producer_id, number of partitions) as a good response
     """
     data = request.json
     if "topic" in data:
@@ -380,6 +351,7 @@ def RegisterProducer():
             
             producerID = result[0][3]
             topicID = result[0][0]
+            num_partitions = len(result[0][4].keys())
 
             if flag == True:   # Topic created properly
                 returnID = (producerID * (MAX_TOPICS) + topicID) * 10 + 1
@@ -403,7 +375,9 @@ def RegisterProducer():
                             )
                 
                 conn.commit()
-                response = GoodResponse({"status": "success", "producer_id": returnID})  
+                response = GoodResponse({"status": "success", 
+                                         "producer_id": returnID,
+                                         "num_partitions": num_partitions})  
         except Exception as e:
             print(e)
             response = ServerErrorResponse('error in registering producer')
@@ -528,7 +502,7 @@ def Login():
     data = request.json
     if "topic" in data and "id" in data and "type" in data:
         resp, query = CheckValidityOfID(data['id'], data['topic'], data['type'])
-        return GoodResponse({"status": "success"}) if query is not None else resp
+        return GoodResponse({"status": "success", "num_partitions": len(query[0][4].keys())}) if query is not None else resp
     else:
         return BadRequestResponse('topic or consumer id not sent')
 
