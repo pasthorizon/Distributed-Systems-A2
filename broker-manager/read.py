@@ -171,7 +171,7 @@ def DequeueMessage():
                                 "offset": offsets[str(cp)]
                             },
                             headers = {'Content-Type': 'application/json'})
-                print(response.json()['message'])
+                # print(response.json()['message'])
                 if response.json()['status'] == 'success':
                     offsets[str(cp)] += 1
                     message = response.json()['message']
@@ -191,7 +191,7 @@ def DequeueMessage():
                                         "offset": offsets[str(cp)]
                                     },
                                     headers = {'Content-Type': 'application/json'})
-                        print(response.json()['message'])
+                        # print(response.json()['message'])
                         if response.json()['status'] == 'success':
                             offsets[str(cp)] += 1
                             message = response.json()['message']
@@ -226,7 +226,7 @@ def DequeueMessage():
     else:
         response = BadRequestResponse('topic or consumer id not sent')
 
-    print(response)
+    # print(response)
     return response
 
 # G
@@ -258,7 +258,7 @@ def Size():
         
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT * FROM all_consumers WHERE consumer_id = %s", (consumer_id,))
+            cursor.execute("SELECT * FROM all_consumers WHERE consumerid = %s", (str(consumer_id),))
             offsets = cursor.fetchall()[0][1]
             cursor.close()
             mess = {}
@@ -270,7 +270,6 @@ def Size():
         except Exception as e:
             response = ServerErrorResponse(f"Error in accessing offsets => {e}")
 
-        response = GoodResponse({"status": "success", "size": json.dumps(mess)})        
         
     else:
         response = BadRequestResponse('topic or consumer id not sent')
@@ -377,7 +376,7 @@ if __name__ == "__main__":
        WHERE table_schema = 'public'""")
 
     all_tables = cursor.fetchall()
-    print(all_tables)
+    # print(all_tables)
 
 
     app.run(debug=True, host='0.0.0.0')

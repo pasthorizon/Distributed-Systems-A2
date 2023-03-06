@@ -18,16 +18,16 @@ class myConsumer:
                     if response.status_code == 200:
                         self.register[topic] = {}
                         self.register[topic]['id'] = response.json()['consumer_id']
-                        self.register[topic]['num_partitions'] = response.json()['num_partitions']
+                        self.register[topic]['num_partitions'] = int(response.json()['num_partitions'])
                     else:
                         print(f"Error in registering consumer: {topic} => {response.json()['message']}")
 
-                    return dict(response.json())
+                    
                 
                 except Exception as e:
                     print(f"Error: error in connecting with the server => {e}")
 
-        return None
+        return self.register
 
     def login(self, topics: dict):
         for topic in topics.keys():
@@ -100,7 +100,7 @@ class myConsumer:
             return None
         
         try:
-            response = requests.get(url,json = {'topic':topic, 'consumer_id': self.register[topic]})
+            response = requests.get(url,json = {'topic':topic, 'consumer_id': self.register[topic]['id']})
             if response.status_code == 200:
                 return response.json()['size']
             else:

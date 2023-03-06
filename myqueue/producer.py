@@ -9,8 +9,10 @@ class myProducer:
             self.registerForTopics(topics) 
 
     def registerForTopics(self, topics:list):
+        
         for topic in topics:
             if topic not in self.register:
+            
                 url = self.broker + '/producer/register'
                 try:
                     response = requests.post(url, json = {'topic':topic}, headers = {'Content-Type': 'application/json'})
@@ -18,17 +20,16 @@ class myProducer:
                     if response.status_code == 200:
                         self.register[topic] = {}
                         self.register[topic]["id"] = response.json()['producer_id']
-                        self.register[topic]["num_partitions"] = response.json()['num_partitions']
+                        self.register[topic]["num_partitions"] = int(response.json()['num_partitions'])
 
                     else:
                         print(f"Error in creating topic: {topic} => {response.json()['message']}")
-
-                    return dict(response.json())
+                        return dict(response.json())
 
                 except Exception as e:
                     print(f"Error: error in connecting with the server => {e}")
         
-        return None
+        return self.register
 
     def login(self, topics: dict):
         for topic in topics.keys():
@@ -106,7 +107,7 @@ class myProducer:
         query_dict['producer_id'] = self.register[topic]["id"]
         query_dict['message'] = message
 
-        if partition != None and partition < self.register['topic']['num_partitions']:
+        if partition != None and int(partition) <self.register[topic]['num_partitions']:
             query_dict['partition'] = partition
 
         try:

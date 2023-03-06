@@ -31,6 +31,7 @@ services:
       - ./.env.dev
     depends_on:
       - rmd1
+      - wbm1
   
   rmd1:
     image: postgres:13-alpine
@@ -50,6 +51,7 @@ services:
       - ./.env.dev
     depends_on:
       - rmd2
+      - wbm1
   
   rmd2:
     image: postgres:13-alpine
@@ -84,6 +86,7 @@ services:
     ports: 
       - 8080:80
     depends_on:
+      - wbm1
       - rbm1
       - rbm2
 

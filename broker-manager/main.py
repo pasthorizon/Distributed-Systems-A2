@@ -31,21 +31,22 @@ def ReturnTopic(topic: str):
         Checks if a topic is present in the database
         Returns (True/False, HTTP Response, Topic Row Details)
     """
-    sem.acquire()
     try: 
         cursor = conn.cursor()
         cursor.execute("""SELECT * FROM all_topics WHERE topicname = %s""",(topic,))
         result = cursor.fetchall()
-        sem.release()
+        
         cursor.close()
     except Exception as e:
         print(e)
-        sem.release()
+       
         cursor.close()
         return False, ServerErrorResponse('error in accessing server'), []
     
     if len(result) == 0:
         return False, ServerErrorResponse('topic not present in database'), []
+
+    # print(result)
     
     return True, GoodResponse({'status':'success'}), result
 
@@ -73,10 +74,15 @@ def CreateNewTopic(topic: str, num = 1):
         Helper to Create a New Topic, called directly or while creating a producer
         Returns (True/False, HTTP Response)
     """
-    cursor = conn.cursor()
-    cursor.execute("""SELECT * FROM all_brokers ORDER BY numberofmessages""")
-    all_brokers = cursor.fetchall()
-    cursor.close()
+    print("hheellllooo")
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""SELECT * FROM all_brokers ORDER BY numberofmessages""")
+        all_brokers = cursor.fetchall()
+        cursor.close()
+    except Exception as e:
+        print(e)
+        
 
     if len(all_brokers) == 0:
         return False, ServerErrorResponse('no broker available')
@@ -143,10 +149,10 @@ def Broadcast(s: str):
     try:
         cursor.execute("SELECT * FROM all_managers")
         result = cursor.fetchall()
-        print(result)
+        # print(result)
         for man in result:
             url = 'http://'+man[2]+':5000/sync' 
-            print(url, s)
+            # print(url, s)
             if man[0] != id and man[3] == 1:
                 response = requests.post(url, 
                                 json = {
@@ -220,14 +226,15 @@ def CreateTopic():
         if len(result) == 0:
             num = data["partitions"] if "partitions" in data else 1 
             _, response = CreateNewTopic(data['name'], num) 
-        
+        else:
+            response = ServerErrorResponse('topic already exists')
         # Send partitions to brokers and update the all_brokers metadata
         
 
     else:
         response = BadRequestResponse('topic not sent')
     
-    print(response)
+    # print(response)
     return response   
 
 # Get the list of all topics in the write only broker manager
@@ -268,19 +275,21 @@ def RegisterConsumer():
     if "topic" in data:
         # update all_topics
         topic = data['topic']
+        print("hello")
+        sem.acquire()
         _, response, result = ReturnTopic(topic)
         # print(result)
         if len(result) == 0: # Topic not present
             response = ServerErrorResponse('topic not present in the database')
 
         else:
+            
+            cursor = conn.cursor()
             topicID = result[0][0]
             consumers = result[0][2]
             num_partitions = len(result[0][4].keys())
 
             consumerID = (consumers * (MAX_TOPICS) + topicID) * 10
-            sem.acquire()
-            cursor = conn.cursor()
             try:
                 query = sql.SQL("""UPDATE all_topics SET consumers = {con} 
                                     WHERE topicname = {top}""").format(con = sql.Literal(consumers + 1), 
@@ -323,7 +332,8 @@ def RegisterConsumer():
     else:
         response = BadRequestResponse('topic not sent')
     
-    print(response)
+    sem.release()
+    # print(response)
     return response
 
 # Producer is registered here
@@ -340,6 +350,8 @@ def RegisterProducer():
     data = request.json
     if "topic" in data:
         topic = data['topic']
+        sem.acquire()
+        print("hello1")
         _, response, result = ReturnTopic(topic)
         cursor = conn.cursor()
         try:
@@ -348,7 +360,7 @@ def RegisterProducer():
                 flag, response = CreateNewTopic(topic, 1)
                 _, response, result = ReturnTopic(topic)
                        
-            
+            print("hello2")
             producerID = result[0][3]
             topicID = result[0][0]
             num_partitions = len(result[0][4].keys())
@@ -386,7 +398,7 @@ def RegisterProducer():
             sem.release()
     else:
         response = BadRequestResponse('topic not sent')
-
+    sem.release()
     return response
 
 
@@ -420,11 +432,11 @@ def EnqueueMessage():
         
         # Get all active partitions for this topic
         ap = {}
-        print(partitions)
+        # print(partitions)
         for x in partitions:
             if partitions[x]['active'] == True:
                 ap[x] = partitions[x] 
-        print(ap)
+        # print(ap)
         # Check if partition index specified is active
         if 'partition' in data and str(data['partition']) not in ap:
             return ServerErrorResponse('partition not present for this topic') 
@@ -532,7 +544,7 @@ def createBroker():
     cursor.execute("SELECT COUNT (*) FROM all_brokers")
     id = cursor.fetchone()[0] + 1
     cursor.execute("""INSERT INTO all_brokers (brokerid, lastheartbeat, numberofmessages, active) VALUES 
-        (%s, %s, 0, %s, 1)""",(id, int(time.time()),json.dumps({})))
+        (%s, %s, 0, 1)""",(id, int(time.time())))
 
 
     conn.commit()
@@ -641,7 +653,7 @@ if __name__ == "__main__":
        WHERE table_schema = 'public'""")
 
     all_tables = cursor.fetchall()
-    print(all_tables)
+    # print(all_tables)
 
 
     app.run(debug=True, host='0.0.0.0')
