@@ -12,3 +12,9 @@ This system has been deployed on Docker. There can be other ways of deploying it
 # Running Instructions
 1. In the main directory, run `sudo docker compose up`
 2. Run `init.sh` to add brokers and read only broker managers
+
+# Design and Documentation
+Design: [https://pasthorizon.github.io/Distributed-Systems-A2/Design.html](https://pasthorizon.github.io/Distributed-Systems-A2/Design.html)
+
+
+Documentation: [https://pasthorizon.github.io/Distributed-Systems-A2/Documentation.html](https://pasthorizon.github.io/Distributed-Systems-A2/Documentation.html)
