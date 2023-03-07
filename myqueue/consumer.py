@@ -1,5 +1,7 @@
+import re
 import requests
 from urllib import response 
+import json
 
 class myConsumer:
     def __init__(self, topics: list or None, writebroker: str, readbroker: str):
@@ -102,7 +104,9 @@ class myConsumer:
         try:
             response = requests.get(url,json = {'topic':topic, 'consumer_id': self.register[topic]['id']})
             if response.status_code == 200:
-                return response.json()['size']
+                result = response.json()['size']
+                result = json.loads(result)
+                return result
             else:
                 print("Error in getting queue size => " + response.json()['message'])
         except Exception as e:

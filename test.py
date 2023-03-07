@@ -66,7 +66,7 @@ def testRetrieveMessage():
         print("TEST FAILED: Message retrieve")
 
 def testSize():
-    topics = ['testSize-1','testSize-2']
+    topics = ['testSize-11-1','testSize-11-2']
 
     init(topics)
 
@@ -79,22 +79,28 @@ def testSize():
     
     dictSize = {}
 
-    for i in range(producer.register['testSize-2']['num_partitions']):
+    for i in range(producer.register['testSize-11-2']['num_partitions']):
         numMessages = randint(1,6)
-        dictSize[i] = numMessages
+        dictSize[str(i)] = numMessages
         for j in range(numMessages):
-            resp = producer.sendNewMessage('testSize-2', 'testSize-2-' + str(i) + '-' + str(j), i)
+            resp = producer.sendNewMessage('testSize-11-2', 'testSize-11-2-' + str(i) + '-' + str(j), i)
     
-    if consumer.getQueueSize('testSize-2') == dictSize:
+    result = consumer.getQueueSize('testSize-11-2')
+    
+    res = all((result.get(k) == v for k, v in dictSize.items()))
+
+    if res:
         print("TEST PASSED: Get queue size before consumption")
     else:
         print("TEST FAILED: Get queue size before consumption")
 
-    consumer.getNextMessage('testSize-2', 0)
+    consumer.getNextMessage('testSize-11-2', 0)
+    result = consumer.getQueueSize('testSize-11-2')
+    dictSize['0']-=1
 
-    dictSize[0]-=1
+    res = all((result.get(k) == v for k, v in dictSize.items()))
 
-    if consumer.getQueueSize('testSize-2') == dictSize:
+    if consumer.getQueueSize('testSize-11-2') == dictSize:
         print("TEST PASSED: Get queue size after consumption")
     else:
         print("TEST FAILED: Get queue size after consumption")

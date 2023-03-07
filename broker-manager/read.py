@@ -14,8 +14,8 @@ from responses import ServerErrorResponse, BadRequestResponse, GoodResponse
 app = Flask(__name__)
 
 
-global sem
-sem = threading.Semaphore() # Semaphore for parallel executions
+global semSync
+semSync = threading.Semaphore() # Semaphore for parallel executions
 
 global MAX_TOPICS
 MAX_TOPICS = 100000 # Power of 10 only (CAREFUL!!!)
@@ -28,16 +28,13 @@ def ReturnTopic(topic: str):
         Checks if a topic is present in the database
         Returns (True/False, HTTP Response, Topic Row Details)
     """
-    sem.acquire()
     try: 
         cursor = conn.cursor()
         cursor.execute("""SELECT * FROM all_topics WHERE topicname = %s""",(topic,))
         result = cursor.fetchall()
-        sem.release()
         cursor.close()
     except Exception as e:
         print (e)
-        sem.release()
         cursor.close()
         return False, ServerErrorResponse('error in accessing server'), []
     
@@ -69,13 +66,14 @@ def CheckValidityOfID(id: int, topic: str, client: str):
 def Broadcast(sql: str):
     id = int(DB_HOST.replace('rmd', ''))
     cursor = conn.cursor()
-    # sem.acquire()
+    cursor.execute("SELECT * FROM all_managers")
     try:
-        cursor.execute("SELECT * FROM all_managers")
         result = cursor.fetchall()
         for man in result:
+            
             if man[0] != id and man[3] == 1:
                 url = 'http://' + man[2] + ':5000/sync'
+                # print(f"\n{DB_HOST} syncing with {man[2]}\n")
                 response = requests.post(url, 
                                 json = {
                                     "sender": DB_HOST,
@@ -83,28 +81,34 @@ def Broadcast(sql: str):
                                 },
                                 headers = {'Content-Type': 'application/json'})
 
+                # print(f"response from {man[2]}: ")
+                # print( response.json())       
+
+
                 if response.status_code != 200:
                     return False
         return True
     
-    except:
+    except Exception as e:
+        print(e)
         return False
 
 @app.route("/sync", methods = ['POST'])
 def Sync():
     data = request.json
     sql = data["query"]   
-    sem.acquire()
+    semSync.acquire()
     cursor = conn.cursor()
     try:
         cursor.execute(sql)
         conn.commit()
-        response = GoodResponse({})
-    except:
+        response = GoodResponse({"message":"sync successful"})
+    except Exception as e:
+        print(e)
         response =  ServerErrorResponse('unable to process request')
     finally:
         cursor.close()
-        sem.release()
+        semSync.release()
     return response
     
 
@@ -112,7 +116,6 @@ def Sync():
 @app.route("/topics", methods = ['GET'])
 def ListTopics():
     cursor = conn.cursor()
-    sem.acquire() #
     try:
         cursor.execute("SELECT topicname FROM all_topics")
         all_topics = cursor.fetchall()
@@ -121,7 +124,6 @@ def ListTopics():
         response = ServerErrorResponse('error while getting all topics')
     finally:
         cursor.close()
-        sem.release() #
     return response
 
 # Consume a message from the queue
@@ -142,14 +144,12 @@ def DequeueMessage():
         resp, result = CheckValidityOfID(id = consumer_id, topic = topic, client = "consumer")
         if result is None: return resp
         # Steps
-
         partitions = result[0][4]
         active_partitions = [x for x in partitions.keys() if partitions[x]["active"] == True]
         if len(active_partitions) == 0:
             # Print no active partitions
             return ServerErrorResponse('no active partition for this topic')
         
-        sem.acquire()
         try: 
             cursor = conn.cursor()
             cursor.execute("""SELECT * FROM all_consumers WHERE consumerid = %s""",(str(consumer_id),))
@@ -178,6 +178,7 @@ def DequeueMessage():
 
             else:
                 for i in range(len(partitions)):
+            # print(f"\n {DB_HOST} completed broadcast for {consumer_id}\n")
                     cp = (lastp + i + 1) % len(partitions)
                     nextp = cp
                     # print(partitions[str(cp)])
@@ -196,11 +197,16 @@ def DequeueMessage():
                             offsets[str(cp)] += 1
                             message = response.json()['message']
                             break 
+
+                        else:
+                            print(response.json())
             
             if message == '':
-                sem.release()
                 cursor.close()
                 return ServerErrorResponse('no message pending in queue')
+            
+            # print(f"\n\n{DB_HOST} serving {consumer_id} message: {message}")
+
             
             # Find the next query from this partition
             # Update all_consumers
@@ -210,23 +216,24 @@ def DequeueMessage():
                                                         id = sql.Literal(str(consumer_id)))
             cursor.execute(query)
             # ACK synchronize and get ACK for this changes
+            # print(f"\n {DB_HOST} calling broadcast for {consumer_id}\n")
             flag = Broadcast(query.as_string(conn))
+            # print(f"\n {DB_HOST} completed broadcast for {consumer_id}\n")
+
             if flag == True:
                 conn.commit()
-                response = GoodResponse({"status": "success", "message": message})
+                response = GoodResponse({"status": "success", "message": message + 'from '+ DB_HOST})
             else:
                 response = ServerErrorResponse('error in broadcasting')
         except Exception as e:
             print(e)
             response =  ServerErrorResponse('error in ')
         finally:
-            sem.release()
             cursor.close()
         
     else:
         response = BadRequestResponse('topic or consumer id not sent')
 
-    # print(response)
     return response
 
 # G
@@ -263,7 +270,7 @@ def Size():
             cursor.close()
             mess = {}
             for partition in partitions:
-                mess[partition] = partitions[partition]["numberofmessages"] - offsets[partition]    
+                mess[partition] = partitions[partition]["numberofmessages"] - offsets[partition]+1    
 
             response = GoodResponse({"status": "success", "size": json.dumps(mess)})
 
@@ -286,7 +293,61 @@ def Login():
     else:
         return BadRequestResponse('topic or consumer id not sent')
 
+@app.route('/init', methods = ['POST'])
+def Init():
+    data = request.json
+    allTopicsData = data['all_topics']
+    allBrokersData = data['all_brokers']
+    allManagersData = data['all_managers']
+    allProducersData = data['all_producers']
+    allConsumersData = data['all_consumers']
+    
+    cursor = conn.cursor()
+    
+    for row in allTopicsData:
+        col_names = sql.SQL(',').join(sql.Identifier(n) for n in ['topicid', 'topicname', 'consumers', 'producers', 'partitions'])
+        col_values = sql.SQL(',').join(sql.Literal(n) for n in [row[0], row[1], row[2], row[3], json.dumps(row[4])])
+    
+        query = sql.SQL("""INSERT INTO all_topics ({col_names})
+                        VALUES ({col_values})""").format(col_names=col_names, col_values=col_values)
+        cursor.execute(query)
+    
+    for row in allProducersData:
+        col_names = sql.SQL(',').join(sql.Identifier(n) for n in ['producerid', 'lit'])
+        col_values = sql.SQL(',').join(sql.Literal(n) for n in row)
+        cursor.execute(sql.SQL("""INSERT INTO all_producers ({col_names})
+                        VALUES ({col_values})""")
+                        .format(col_names=col_names, col_values=col_values))
+    
+    for row in allBrokersData:
+        col_names = sql.SQL(',').join(sql.Identifier(n) for n in ['brokerid', 'lastheartbeat', 'numberofmessages', 'active'])
+        col_values = sql.SQL(',').join(sql.Literal(n) for n in row)
+        cursor.execute(sql.SQL("""INSERT INTO all_brokers ({col_names})
+                        VALUES ({col_values})""")
+                        .format(col_names=col_names, col_values=col_values))
 
+    for row in allConsumersData:
+        col_names = sql.SQL(',').join(sql.Identifier(n) for n in ['consumerid','partitionoffsets', 'lastindex','lit'])
+        col_values = sql.SQL(',').join(sql.Literal(n) for n in [row[0], json.dumps(row[1]), row[2], row[3]])
+                # Add another producer to the global consumer list
+        query = sql.SQL("""INSERT INTO all_consumers ({col_names})
+                                VALUES ({col_values})""").format(col_names=col_names, col_values=col_values)
+                            
+        cursor.execute(query)
+
+
+    for row in allManagersData:
+        col_names = sql.SQL(',').join(sql.Identifier(n) for n in ['managerid','managertype','ip','active'])
+        col_values = sql.SQL(',').join(sql.Literal(n) for n in row)
+                # Add another producer to the global consumer list
+        query = sql.SQL("""INSERT INTO all_managers ({col_names})
+                                VALUES ({col_values})""").format(col_names=col_names, col_values=col_values)
+                            
+        cursor.execute(query)
+
+
+    conn.commit()
+    return GoodResponse({"status":"success"})
 
 @app.route("/")
 def home():

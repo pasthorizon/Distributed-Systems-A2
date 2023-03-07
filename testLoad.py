@@ -13,6 +13,7 @@ def consumer_func(consumer_id, topics : list):
     log_file = open(file_name,"w")
     consumer = myConsumer(topics = topics, writebroker = "http://localhost:5000", readbroker = "http://localhost:8080")
     count = 0
+    print(consumer.register)
     while count<20:
 
         for topic in topics:
@@ -37,7 +38,7 @@ def producer_func(producer_id, topics: list):
         time.sleep(sleep_time)
         topic = log.split()[2]
         partition = log.split()[3]
-        producer.sendNewMessage(topic, log.split()[4], partition) 
+        producer.sendNewMessage(topic, log, partition) 
 
 
 
@@ -53,9 +54,9 @@ t8 = threading.Thread(target=consumer_func, args=(3,['T-1', 'T-2', 'T-3']))
 
 
 
-# t1.start()
-# t2.start()
-# t3.start()
+t1.start()
+t2.start()
+t3.start()
 
 t6.start()
 t7.start()

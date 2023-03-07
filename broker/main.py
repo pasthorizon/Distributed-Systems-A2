@@ -43,7 +43,6 @@ def RegisterNewPartition():
     cursor.execute("SELECT * FROM all_partitions WHERE topicname = %s AND partitionid = %s",(topic_name, partition_id))
     result = cursor.fetchall()
     if len(result) != 0:
-        print("hahahahahahhah", DB_NAME, DB_HOST, result)
         sem.release()
         cursor.close()
         response = ServerErrorResponse('partition already present')
@@ -126,7 +125,6 @@ def DequeueMessage():
     partition = data['partition']
     offset = data['offset']
 
-    sem.acquire()
     cursor = conn.cursor()
     try:
         cursor.execute("SELECT * FROM all_partitions WHERE topicname = %s AND partitionid = %s", (topic, partition))
@@ -144,7 +142,6 @@ def DequeueMessage():
         response = ServerErrorResponse('error in removing message from queue')
     finally:
         cursor.close()
-        sem.release()
 
     print(response)
     return response
@@ -209,7 +206,7 @@ if __name__ == "__main__":
        WHERE table_schema = 'public'""")
 
     all_tables = cursor.fetchall()
-    print(all_tables)
+    # print(all_tables)
 
     # Heartbeats are sent by a separate thread
     heartbeat_thread = threading.Thread(target = Heartbeat)
