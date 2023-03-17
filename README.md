@@ -11,10 +11,17 @@ This system has been deployed on Docker. There can be other ways of deploying it
 
 # Running Instructions
 1. In the main directory, run `sudo docker compose up`
-2. Run `init.sh` to add brokers and read only broker managers
+2. Run `init.sh` to add brokers and read only broker managers, currently the number of brokers and read broker managers is set to 2.
 
 # Design and Documentation
 Design: [https://pasthorizon.github.io/Distributed-Systems-A2/Design.html](https://pasthorizon.github.io/Distributed-Systems-A2/Design.html)
 
 
 Documentation: [https://pasthorizon.github.io/Distributed-Systems-A2/Documentation.html](https://pasthorizon.github.io/Distributed-Systems-A2/Documentation.html)
+
+# Testing Instructions
+1. To test client libraries `consumer.py` and `producer.py`, run `test.py`
+
+2. To perform load testing run `test.sh` and then run `testLoad.py`
+
+3. To reset the system, run `reset.sh`
