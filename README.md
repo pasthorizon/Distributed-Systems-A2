@@ -10,8 +10,9 @@ This repository contains the implementation of [Assignment 2](https://cse.iitkgp
 This system has been deployed on Docker. There can be other ways of deploying it as well, for example, a virtual machine for every host. 
 
 # Running Instructions
-1. In the main directory, run `sudo docker compose up`
-2. Run `init.sh` to add brokers and read only broker managers, currently the number of brokers and read broker managers is set to 2.
+1. In the main directory, run `sudo docker compose up`. Note that all the containers may not be built after the first run, it is always better to end the first run using `Ctrl + C` and then run `sudo docker compose up` again.
+
+2. Run `init.sh` to add brokers and read only broker managers, currently the number of brokers and read only broker managers is set to 2 each.
 
 # Design and Documentation
 Design: [https://pasthorizon.github.io/Distributed-Systems-A2/Design.html](https://pasthorizon.github.io/Distributed-Systems-A2/Design.html)
