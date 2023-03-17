@@ -4,95 +4,397 @@ from rmd1
 from rmd2
 102 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
 from rmd1
+104 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd2
+103 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd1
 105 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
 from rmd2
-104 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
-from rmd1
-103 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
-from rmd2
-106 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
-from rmd1
 107 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd1
+106 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd2
+111 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd1
+109 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
 from rmd2
 108 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
-from rmd1
-111 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
 from rmd2
-109 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+113 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd2
+112 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
 from rmd1
 110 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
 from rmd2
-113 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+115 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
 from rmd1
-112 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
-from rmd2
+116 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd1
 117 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
 from rmd1
 114 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
 from rmd2
-116 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
-from rmd1
+120 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd2
 118 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
 from rmd2
-115 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
-from rmd1
-121 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
-from rmd2
-124 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
-from rmd1
 119 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
 from rmd2
-120 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+121 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
 from rmd1
-125 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+124 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
 from rmd2
-133 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
-from rmd1
 122 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
 from rmd2
+125 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd1
+133 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd1
+123 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd1
 126 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
 from rmd1
 134 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
 from rmd2
-123 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+127 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
 from rmd1
 129 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
-from rmd2
+from rmd1
 138 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
-from rmd1
-127 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
-from rmd2
-130 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
-from rmd1
-143 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
 from rmd2
 128 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
 from rmd1
-131 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+130 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
 from rmd2
-146 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+143 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
 from rmd1
 132 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
 from rmd2
+131 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd1
+146 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd1
+135 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd1
 137 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
 from rmd1
 147 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
 from rmd2
-135 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
-from rmd1
+136 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd2
 139 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
 from rmd2
 148 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
-from rmd1
-136 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
-from rmd2
-140 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
-from rmd1
-149 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
 from rmd2
 141 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
 from rmd1
-142 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+140 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
 from rmd2
-155 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+149 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
 from rmd1
+144 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd2
+142 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd1
+155 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd2
+152 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd1
+145 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd1
+158 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd1
+153 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd1
+151 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd1
+163 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd2
+154 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd1
+150 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd2
+162 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd1
+159 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd2
+156 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd1
+164 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd2
+157 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd1
+161 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd1
+165 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd2
+160 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd1
+167 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd1
+171 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd2
+168 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd2
+166 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd1
+188 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd1
+169 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd2
+170 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd1
+191 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd2
+172 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd1
+173 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd1
+192 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd2
+174 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd2
+175 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd1
+194 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd2
+176 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd2
+177 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd1
+199 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd2
+178 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd2
+181 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd1
+197 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd2
+179 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd1
+182 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd1
+203 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd1
+180 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd1
+184 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd2
+202 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd2
+183 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd2
+185 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd2
+205 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd1
+186 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd1
+187 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd1
+206 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd2
+189 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd1
+200 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd1
+207 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd1
+190 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd2
+198 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd1
+208 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd1
+195 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd1
+201 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd2
+210 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd2
+193 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd1
+204 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd1
+217 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd2
+196 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd1
+209 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd1
+221 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd2
+211 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd1
+212 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd2
+222 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd2
+213 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd2
+214 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd2
+229 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd1
+215 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd2
+218 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd1
+241 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd2
+216 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd1
+219 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd1
+247 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd1
+220 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd2
+224 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd1
+248 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd2
+223 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd2
+228 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd1
+252 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd2
+225 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd2
+232 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd1
+253 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd2
+226 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd2
+233 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd1
+256 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd2
+227 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd2
+238 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd2
+259 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd2
+230 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd2
+240 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd1
+260 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd1
+231 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd2
+246 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd1
+265 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd2
+234 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd1
+249 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd1
+267 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd2
+235 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd2
+251 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd1
+268 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd2
+236 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd2
+254 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd2
+273 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd2
+237 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd2
+258 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd1
+274 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd2
+239 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd1
+263 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd1
+277 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd1
+242 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd1
+264 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd2
+286 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd2
+243 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd2
+270 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd2
+289 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd1
+244 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd1
+272 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd1
+287 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd1
+245 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd1
+276 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd1
+293 P-3 T-1 0 Producer=>P-3_Topic=>T-1_Partition=>0
+from rmd2
+250 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd2
+281 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd2
+288 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd1
+255 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd2
+282 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd2
+291 P-1 T-1 0 Producer=>P-1_Topic=>T-1_Partition=>0
+from rmd2
+257 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd2
+280 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd1
+261 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd2
+283 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd1
+262 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd1
+284 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd1
+266 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd2
+294 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd1
+269 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd2
+297 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd1
+271 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd2
+298 P-3 T-1 2 Producer=>P-3_Topic=>T-1_Partition=>2
+from rmd1
+278 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd1
+292 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd1
+275 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd2
+295 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd1
+279 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd2
+296 P-1 T-1 2 Producer=>P-1_Topic=>T-1_Partition=>2
+from rmd1
+285 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd2
+290 P-3 T-1 1 Producer=>P-3_Topic=>T-1_Partition=>1
+from rmd1
+299 P-1 T-1 1 Producer=>P-1_Topic=>T-1_Partition=>1
+from rmd2

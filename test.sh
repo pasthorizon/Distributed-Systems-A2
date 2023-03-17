@@ -2,16 +2,16 @@
 # curl -X POST  -H 'Content-Type: application/json' http://127.0.0.1:5000/broker/register
 
 # create topic
-# curl -X POST -d '{"name": "T-2", "partitions":7}' -H 'Content-Type: application/json' http://127.0.0.1:5000/topics
-# curl -X POST -d '{"name": "T-1", "partitions":7}' -H 'Content-Type: application/json' http://127.0.0.1:5000/topics
-# curl -X POST -d '{"name": "T-3", "partitions":7}' -H 'Content-Type: application/json' http://127.0.0.1:5000/topics
+curl -X POST -d '{"name": "T-2", "partitions":7}' -H 'Content-Type: application/json' http://127.0.0.1:5000/topics
+curl -X POST -d '{"name": "T-1", "partitions":7}' -H 'Content-Type: application/json' http://127.0.0.1:5000/topics
+curl -X POST -d '{"name": "T-3", "partitions":7}' -H 'Content-Type: application/json' http://127.0.0.1:5000/topics
 
 #create broker manager
 # curl -X POST -d '{"ip": "rbm2", "managertype":"0"}' -H 'Content-Type: application/json' http://127.0.0.1:5000/managers/add
 
 
 #create producer and consumer
-curl -X POST -d '{"topic": "T-2"}' -H 'Content-Type: application/json' http://127.0.0.1:5000/producer/register
+# curl -X POST -d '{"topic": "T-2"}' -H 'Content-Type: application/json' http://127.0.0.1:5000/producer/register
 # curl -X POST -d '{"topic": "producer_signup"}' -H 'Content-Type: application/json' http://127.0.0.1:5000/consumer/register
 
 # #produce two messages
