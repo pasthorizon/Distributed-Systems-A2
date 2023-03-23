@@ -26,10 +26,7 @@ global conn
 
 global BROKER_MANAGER
 
-# TODO Enqueue (done, test pending)
-# TODO Dequeue (done, test pending)
-# TODO Heartbeat (done)
-# TODO RegisterNewPartition (done, test pending)
+
 
 
 @app.route("/partitions", methods = ["POST"])
@@ -54,12 +51,10 @@ def RegisterNewPartition():
                         "message": f'Topic {topic_name} created successfully'
                     })
             
-            cursor.execute("""SELECT COUNT (*) FROM all_partitions""")
-            id = cursor.fetchone()[0]+1
-            cursor.execute("INSERT INTO all_partitions (topicname, partitionid, tailid) VALUES (%s, %s, %s)",
-                            (topic_name, partition_id, 1))
+            cursor.execute("INSERT INTO all_partitions (topicname, partitionid) VALUES (%s, %s)",
+                            (topic_name, partition_id))
             cursor.execute(sql.SQL("""CREATE TABLE {table_name} (
-                messageid BIGINT PRIMARY KEY, 
+                messageid SERIAL PRIMARY KEY, 
                 message TEXT
             )""").format(table_name = sql.Identifier(data['topic'] + '_' + str(partition_id))))
             conn.commit()
@@ -84,7 +79,7 @@ def Heartbeat():
         time.sleep(SLEEP_TIME)
 
 
-# TODO Test functionality
+
 @app.route("/enqueue", methods = ["POST"])
 def EnqueueMessage():
     data = request.json
@@ -92,14 +87,10 @@ def EnqueueMessage():
     partition = data["partition"]
     message = data["message"]
 
-    col_names = sql.SQL(',').join(sql.Identifier(n) for n in ['messageid', 'message'])
-    sem.acquire()
+    col_names = sql.SQL(',').join(sql.Identifier(n) for n in ['message'])
     cursor = conn.cursor()
     try:
-        # Find tailid
-        cursor.execute("SELECT * FROM all_partitions WHERE topicname = %s AND partitionid = %s", (topic, partition))
-        tid = cursor.fetchall()[0][2]
-        col_values = sql.SQL(',').join(sql.Literal(n) for n in [tid, message])
+        col_values = sql.SQL(',').join(sql.Literal(n) for n in [message])
         # Add message to the partition table
         cursor.execute(sql.SQL("""INSERT INTO {table_name} ({col_names}) 
                                   VALUES ({col_values})""").format(table_name = sql.Identifier(topic + "_" + partition), 
@@ -107,14 +98,12 @@ def EnqueueMessage():
                                         col_values = col_values))
         
         # Update all_partitions metadata
-        cursor.execute("UPDATE all_partitions SET tailid = %s WHERE topicname = %s AND partitionid = %s", (tid + 1, topic, partition))
         conn.commit()
         response = GoodResponse({"status": "success"}) 
     except:
         response = ServerErrorResponse('error in adding message to the queue')
     finally:
         cursor.close()
-        sem.release()
     
     return response
 
@@ -127,9 +116,10 @@ def DequeueMessage():
 
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT * FROM all_partitions WHERE topicname = %s AND partitionid = %s", (topic, partition))
-        tid = cursor.fetchall()[0][2]
-        if offset == tid:
+        cursor.execute(sql.SQL("SELECT COUNT (*) FROM {table_name}").format(
+                table_name = sql.Identifier(topic + "_" + str(partition))))
+        tid = cursor.fetchone()[0]
+        if offset > tid:
             response = ServerErrorResponse('requested partition has no new messages')
         else:
             cursor.execute(sql.SQL("""SELECT message FROM {table_name} WHERE messageid = {hid}""").format(
@@ -145,6 +135,8 @@ def DequeueMessage():
 
     print(response)
     return response
+
+
 
 @app.route("/")
 def home():
@@ -184,7 +176,6 @@ if __name__ == "__main__":
         cursor.execute("""CREATE TABLE all_partitions (
                 topicname VARCHAR(255),
                 partitionid INT,
-                tailid BIGINT,
                 PRIMARY KEY (topicname, partitionid)
                 )""")
 

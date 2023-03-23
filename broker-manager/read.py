@@ -17,6 +17,7 @@ app = Flask(__name__)
 global semSync
 semSync = threading.Semaphore() # Semaphore for parallel executions
 
+
 global MAX_TOPICS
 MAX_TOPICS = 100000 # Power of 10 only (CAREFUL!!!)
 
@@ -125,6 +126,8 @@ def ListTopics():
     finally:
         cursor.close()
     return response
+
+
 
 # Consume a message from the queue
 @app.route('/consumer/consume', methods = ["GET"])
@@ -313,7 +316,7 @@ def Init():
         cursor.execute(query)
     
     for row in allProducersData:
-        col_names = sql.SQL(',').join(sql.Identifier(n) for n in ['producerid', 'lit'])
+        col_names = sql.SQL(',').join(sql.Identifier(n) for n in ['producerid', 'lastindex','lit'])
         col_values = sql.SQL(',').join(sql.Literal(n) for n in row)
         cursor.execute(sql.SQL("""INSERT INTO all_producers ({col_names})
                         VALUES ({col_values})""")
@@ -400,7 +403,9 @@ if __name__ == "__main__":
         
         cursor.execute("""CREATE TABLE all_producers(
             producerid VARCHAR(255) PRIMARY KEY,
-            lit BIGINT)""")
+            lastindex SMALLINT,
+            lit BIGINT
+            )""")
         
         cursor.execute("""CREATE TABLE all_brokers(
             brokerid SMALLINT PRIMARY KEY,
